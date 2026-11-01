@@ -161,6 +161,19 @@ export class Engine {
 		u.uScreen[0] = scr.width;
 		u.uScreen[1] = scr.height;
 		u.uTime = this.time;
+		// the camera, so the light shafts can sit on the map instead of on the screen
+		const wt = canvas.stage.worldTransform;
+		u.uView[0] = wt.tx;
+		u.uView[1] = wt.ty;
+		u.uView[2] = wt.a || 1;
+		const r = canvas.dimensions?.sceneRect ?? canvas.dimensions?.rect;
+		if (r) {
+			// the key light sits above the scene's top-left corner; falloff is measured in scene heights
+			u.uRayOrigin[0] = r.x + r.width * 0.1;
+			u.uRayOrigin[1] = r.y - r.height * 0.15;
+			u.uRaySpan = Math.max(1, r.height);
+			u.uScene.set([r.x, r.y, Math.max(1, r.width), Math.max(1, r.height)]);
+		}
 		this.focusY = lerp(this.focusY, this.focusTarget(), Math.min(1, dt * 3));
 		u.uFocusY = this.focusY;
 		this.syncShadows();
@@ -248,18 +261,22 @@ export class Engine {
 		const inv = canvas.stage.worldTransform.clone().invert();
 		const tl = inv.apply({ x: 0, y: 0 });
 		const br = inv.apply({ x: scr.width, y: scr.height });
-		const zoom = canvas.stage.scale.x || 1;
-		const want = Math.round(amount * 70);
+		// motes live on the map: sizes and speeds are in grid units, and there are as many per square as at
+		// any zoom, so zooming in brings you closer to them instead of dragging them along with the camera
+		const g = (canvas.dimensions?.size || 100) / 100;
+		const area = ((br.x - tl.x) * (br.y - tl.y)) / (1920 * 1080 * g * g);
+		const want = Math.min(180, Math.round(amount * 70 * area));
 		const R = (a, b) => a + Math.random() * (b - a);
 		const spawn = (m, anywhere) => {
 			m.x = R(tl.x, br.x);
-			m.y = anywhere ? R(tl.y, br.y) : br.y + 10 / zoom;
+			m.y = anywhere ? R(tl.y, br.y) : br.y + 10 * g;
 			m.vx = R(-1, 1) * kind.drift;
 			m.vy = -R(kind.rise[0], kind.rise[1]);
 			m.ph = R(0, Math.PI * 2);
 			m.sz = R(kind.size[0], kind.size[1]);
 			m.tint = kind.color[Math.floor(Math.random() * kind.color.length)];
 			m.kind = kind;
+			m.age = 0;
 		};
 		while (this.motes.length < want) {
 			const s = new PIXI.Sprite(dotTexture());
@@ -271,17 +288,20 @@ export class Engine {
 			this.motes.push(m);
 		}
 		while (this.motes.length > want) this.motes.pop().s.destroy();
+		const pad = 40 * g;
 		for (const m of this.motes) {
 			if (m.kind !== kind) spawn(m, true);
 			m.ph += dt * kind.twinkle;
-			// screen-space speeds, so they drift the same at any zoom
-			m.x += ((m.vx + Math.sin(m.ph * 0.7) * kind.drift * 0.6) * dt) / zoom;
-			m.y += ((m.vy + Math.cos(m.ph * 0.5) * 3) * dt) / zoom;
-			if (m.y < tl.y - 20 / zoom || m.x < tl.x - 40 / zoom || m.x > br.x + 40 / zoom || m.y > br.y + 40 / zoom) spawn(m, false);
+			m.age += dt;
+			m.x += (m.vx + Math.sin(m.ph * 0.7) * kind.drift * 0.6) * dt * g;
+			m.y += (m.vy + Math.cos(m.ph * 0.5) * 3) * dt * g;
+			// risen off the top: back in from the bottom; left behind by the camera: somewhere in view
+			if (m.y < tl.y - 20 * g && m.x > tl.x - pad && m.x < br.x + pad) spawn(m, false);
+			else if (m.y < tl.y - pad || m.x < tl.x - pad || m.x > br.x + pad || m.y > br.y + pad) spawn(m, true);
 			m.s.position.set(m.x, m.y);
 			m.s.tint = m.tint;
-			m.s.scale.set((m.sz / 16) / zoom);
-			m.s.alpha = kind.alpha * (0.45 + 0.55 * Math.abs(Math.sin(m.ph))) * Math.min(1, amount + 0.3);
+			m.s.scale.set((m.sz / 16) * g);
+			m.s.alpha = kind.alpha * (0.45 + 0.55 * Math.abs(Math.sin(m.ph))) * Math.min(1, amount + 0.3) * Math.min(1, m.age / 0.6);
 		}
 	}
 }

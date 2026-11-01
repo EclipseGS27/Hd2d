@@ -1,7 +1,7 @@
 /**
  * The HD-2D look as one screen-space filter: tilt-shift depth of field around a focus band, bloom, light
- * shafts, color grading (exposure, white balance, split toning, contrast, saturation), chromatic aberration,
- * vignette and film grain. One pass, so it stays cheap enough for every table.
+ * shafts (pinned to the map), color grading (exposure, white balance, split toning, contrast, saturation),
+ * chromatic aberration, vignette and film grain. One pass, so it stays cheap enough for every table.
  */
 
 const FRAG = (taps) => `
@@ -30,6 +30,9 @@ uniform vec3 uHighTint;
 uniform float uRays;
 uniform vec3 uRayColor;
 uniform vec2 uRayOrigin;
+uniform vec3 uView;
+uniform float uRaySpan;
+uniform vec4 uScene;
 uniform float uVignette;
 uniform float uGrain;
 uniform float uAberr;
@@ -79,16 +82,22 @@ void main() {
 	col *= exp2(uExposure);
 	col *= vec3(1.0 + 0.09 * uWarmth, 1.0 + 0.015 * uWarmth, 1.0 - 0.11 * uWarmth);
 
-	// light shafts from the key light: soft rays that drift
+	// light shafts from the key light: soft rays that drift. They are pinned to the map (uView is the camera's
+	// offset and zoom, uRayOrigin a point on the scene), so they stay put when you pan or zoom.
 	if (uRays > 0.001) {
-		vec2 p = (screen - uRayOrigin) * vec2(aspect, 1.0);
+		vec2 world = (screen * uScreen - uView.xy) / uView.z;
+		vec2 p = (world - uRayOrigin) / uRaySpan;
 		float a = atan(p.y, p.x);
 		float d = length(p);
 		float s = sin(a * 23.0 + uTime * 0.15) * 0.5 + 0.5;
 		s *= sin(a * 37.0 - uTime * 0.11 + 1.7) * 0.5 + 0.5;
 		s = pow(s, 2.0);
 		float fall = exp(-d * 1.6) * smoothstep(0.0, 0.25, d);
-		col += uRayColor * s * fall * uRays * 0.55;
+		// only on the map, not on the dark padding around it
+		vec2 q = (world - uScene.xy) / uScene.zw;
+		vec2 e = 0.02 * vec2(uScene.w / uScene.z, 1.0);
+		float inside = smoothstep(0.0, e.x, q.x) * smoothstep(0.0, e.x, 1.0 - q.x) * smoothstep(0.0, e.y, q.y) * smoothstep(0.0, e.y, 1.0 - q.y);
+		col += uRayColor * s * fall * uRays * 0.55 * inside;
 	}
 
 	// split toning: shadows lean one way, highlights the other
@@ -145,7 +154,10 @@ export class HD2DFilter extends PIXI.Filter {
 			uHighTint: new Float32Array([1, 0.9, 0.75]),
 			uRays: 0.3,
 			uRayColor: new Float32Array([1, 0.9, 0.7]),
-			uRayOrigin: new Float32Array([0.1, -0.15]),
+			uRayOrigin: new Float32Array([0, 0]),
+			uView: new Float32Array([0, 0, 1]),
+			uRaySpan: 1000,
+			uScene: new Float32Array([-1e6, -1e6, 2e6, 2e6]),
 			uVignette: 0.45,
 			uGrain: 0.25,
 			uAberr: 0.2,
