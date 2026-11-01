@@ -41,10 +41,43 @@ function dotTexture() {
 	return DOT_TEX;
 }
 
+/** A small leaf or petal: an almond shape with a lighter middle, drawn once */
+let LEAF_TEX = null;
+function leafTexture() {
+	if (LEAF_TEX?.valid) return LEAF_TEX;
+	const c = document.createElement('canvas');
+	c.width = 32;
+	c.height = 20;
+	const g = c.getContext('2d');
+	g.fillStyle = 'rgba(255,255,255,0.95)';
+	g.beginPath();
+	g.moveTo(2, 10);
+	g.quadraticCurveTo(16, -4, 30, 10);
+	g.quadraticCurveTo(16, 24, 2, 10);
+	g.fill();
+	g.strokeStyle = 'rgba(0,0,0,0.25)';
+	g.lineWidth = 1;
+	g.beginPath();
+	g.moveTo(4, 10);
+	g.lineTo(28, 10);
+	g.stroke();
+	LEAF_TEX = PIXI.Texture.from(c);
+	return LEAF_TEX;
+}
+
+/**
+ * Particle kinds. rise: upward speed (negative falls); drift: sideways sway; spin: turning (leaves, petals);
+ * density: how many, against the motes in the light;
+ * glow: additive light (dust, embers, fireflies) rather than solid bits (leaves, petals, snow, ash).
+ */
 const MOTES = {
-	dust: { color: [0xfff1d0, 0xffe2a8, 0xffffff], size: [1.5, 3.2], rise: [4, 12], drift: 10, twinkle: 0.6, alpha: 0.55 },
-	embers: { color: [0xffa040, 0xff7a2a, 0xffd27a], size: [1.5, 3], rise: [18, 40], drift: 14, twinkle: 1.8, alpha: 0.75 },
-	fireflies: { color: [0xd8ff7a, 0xb8ff9a, 0xfff3a0], size: [2.2, 4], rise: [-4, 6], drift: 22, twinkle: 2.6, alpha: 0.9 },
+	dust: { color: [0xfff1d0, 0xffe2a8, 0xffffff], size: [1.5, 3.2], rise: [4, 12], drift: 10, twinkle: 0.6, alpha: 0.55, glow: true },
+	embers: { color: [0xffa040, 0xff7a2a, 0xffd27a], size: [1.5, 3], rise: [18, 40], drift: 14, twinkle: 1.8, alpha: 0.75, glow: true },
+	fireflies: { color: [0xd8ff7a, 0xb8ff9a, 0xfff3a0], size: [2.2, 4], rise: [-4, 6], drift: 22, twinkle: 2.6, alpha: 0.9, glow: true },
+	leaves: { density: 1.3, color: [0x6f9a3a, 0x9bb84a, 0xc98a3a, 0xd9a441, 0xa8562e], size: [10, 16], rise: [-28, -16], drift: 28, twinkle: 1.2, alpha: 0.9, spin: 2.4, leaf: true },
+	petals: { density: 1.5, color: [0xffc4d8, 0xffd9e6, 0xfff0f5, 0xf7a8c4], size: [7, 11], rise: [-20, -10], drift: 30, twinkle: 1.6, alpha: 0.9, spin: 3, leaf: true },
+	snow: { density: 3, color: [0xffffff, 0xeef6ff, 0xdfeeff], size: [3.5, 6.5], rise: [-26, -12], drift: 12, twinkle: 0.8, alpha: 0.9 },
+	ash: { density: 2, color: [0x8a8580, 0x6f6a66, 0xa29c96], size: [2.6, 4.6], rise: [-10, -4], drift: 16, twinkle: 0.5, alpha: 0.7 },
 };
 
 export class Engine {
@@ -265,11 +298,21 @@ export class Engine {
 		// any zoom, so zooming in brings you closer to them instead of dragging them along with the camera
 		const g = (canvas.dimensions?.size || 100) / 100;
 		const area = ((br.x - tl.x) * (br.y - tl.y)) / (1920 * 1080 * g * g);
-		const want = Math.min(180, Math.round(amount * 70 * area));
+		// weather (snow, ash, petals) falls thicker than the motes in the light
+		const want = Math.min(260, Math.round(amount * 70 * (kind.density ?? 1) * area));
 		const R = (a, b) => a + Math.random() * (b - a);
+		const falls = kind.rise[1] < 0;
 		const spawn = (m, anywhere) => {
 			m.x = R(tl.x, br.x);
-			m.y = anywhere ? R(tl.y, br.y) : br.y + 10 * g;
+			// rising kinds come in from below, falling ones from above
+			m.y = anywhere ? R(tl.y, br.y) : falls ? tl.y - 10 * g : br.y + 10 * g;
+			m.rot = R(0, Math.PI * 2);
+			if (m.s) {
+				const tex = kind.leaf ? leafTexture() : dotTexture();
+				if (m.s.texture !== tex) m.s.texture = tex;
+				m.s.blendMode = kind.glow ? PIXI.BLEND_MODES.ADD : PIXI.BLEND_MODES.NORMAL;
+				m.s.rotation = 0;
+			}
 			m.vx = R(-1, 1) * kind.drift;
 			m.vy = -R(kind.rise[0], kind.rise[1]);
 			m.ph = R(0, Math.PI * 2);
@@ -281,7 +324,6 @@ export class Engine {
 		while (this.motes.length < want) {
 			const s = new PIXI.Sprite(dotTexture());
 			s.anchor.set(0.5);
-			s.blendMode = PIXI.BLEND_MODES.ADD;
 			const m = { s };
 			spawn(m, true);
 			L.addChild(s);
@@ -295,13 +337,19 @@ export class Engine {
 			m.age += dt;
 			m.x += (m.vx + Math.sin(m.ph * 0.7) * kind.drift * 0.6) * dt * g;
 			m.y += (m.vy + Math.cos(m.ph * 0.5) * 3) * dt * g;
-			// risen off the top: back in from the bottom; left behind by the camera: somewhere in view
-			if (m.y < tl.y - 20 * g && m.x > tl.x - pad && m.x < br.x + pad) spawn(m, false);
+			// risen off the top (or fallen off the bottom): back in from the other side; left behind by the camera:
+			// somewhere in view
+			if ((falls ? m.y > br.y + 20 * g : m.y < tl.y - 20 * g) && m.x > tl.x - pad && m.x < br.x + pad) spawn(m, false);
 			else if (m.y < tl.y - pad || m.x < tl.x - pad || m.x > br.x + pad || m.y > br.y + pad) spawn(m, true);
 			m.s.position.set(m.x, m.y);
 			m.s.tint = m.tint;
-			m.s.scale.set((m.sz / 16) * g);
-			m.s.alpha = kind.alpha * (0.45 + 0.55 * Math.abs(Math.sin(m.ph))) * Math.min(1, amount + 0.3) * Math.min(1, m.age / 0.6);
+			if (kind.spin) {
+				// leaves and petals tumble: turn, and flip by squashing one way
+				m.rot += dt * kind.spin * (0.5 + Math.abs(Math.sin(m.ph * 0.6)));
+				m.s.rotation = m.rot;
+				m.s.scale.set((m.sz / 16) * g, (m.sz / 16) * g * (0.35 + 0.65 * Math.abs(Math.cos(m.ph * 0.9))));
+			} else m.s.scale.set((m.sz / 16) * g);
+			m.s.alpha = kind.alpha * (kind.glow ? 0.45 + 0.55 * Math.abs(Math.sin(m.ph)) : 1) * Math.min(1, amount + 0.3) * Math.min(1, m.age / 0.6);
 		}
 	}
 }

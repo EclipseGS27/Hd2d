@@ -12,7 +12,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
  */
 
 /** The keys a scene's own look keeps */
-const SCENE_KEYS = (k) => SLIDERS.some((s) => s[0] === k) || ['auto', 'focusFollow', 'crisp'].includes(k);
+const SCENE_KEYS = (k) => SLIDERS.some((s) => s[0] === k) || ['auto', 'focusFollow', 'crisp', 'particles'].includes(k);
 export class HD2DConfig extends ApplicationV2 {
 	static DEFAULT_OPTIONS = {
 		id: 'fu-hd2d-config',
@@ -90,6 +90,9 @@ export class HD2DConfig extends ApplicationV2 {
 			<div class="row">
 				<label class="fld"><span>Focus follows</span><select data-s="focusFollow">${[['token', 'Your token'], ['combatant', 'Whoever is acting'], ['screen', 'Middle of the screen']].map(([v, l]) => `<option value="${v}" ${c.focusFollow === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
 				<label class="fld"><span>Crisp pixels</span><select data-s="crisp">${[['small', 'Small sprites'], ['all', 'Every token'], ['off', 'Off']].map(([v, l]) => `<option value="${v}" ${c.crisp === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+			</div>
+			<div class="row">
+				<label class="fld" data-tooltip="What drifts through the scene. Auto: dust by day, embers in fiery scenes, fireflies at night"><span>Particles</span><select data-s="particles">${[['auto', 'Auto (from the scene)'], ['dust', 'Dust'], ['embers', 'Embers'], ['fireflies', 'Fireflies'], ['leaves', 'Falling leaves'], ['petals', 'Petals'], ['snow', 'Snow'], ['ash', 'Ash'], ['none', 'None']].map(([v, l]) => `<option value="${v}" ${(c.particles ?? 'auto') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
 			</div>
 			<div class="sliders">
 				${Object.entries(groups)

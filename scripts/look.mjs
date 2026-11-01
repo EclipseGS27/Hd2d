@@ -12,7 +12,8 @@ export const SLIDERS = [
 	['bloom', 'Bloom', 0, 2, 0.05, 'Light', 'Glow around lights, fire, magic and bright spots.'],
 	['threshold', 'Bloom threshold', 0.2, 0.95, 0.01, 'Light', 'How bright something must be to glow. Lower glows more.'],
 	['rays', 'Light shafts', 0, 1.5, 0.05, 'Light', 'Soft rays from the key light.'],
-	['motes', 'Floating motes', 0, 1.5, 0.05, 'Light', 'Dust, embers or fireflies drifting in the light.'],
+	['motes', 'Particles', 0, 1.5, 0.05, 'Light', 'Dust, embers, fireflies, leaves, petals, snow or ash drifting through the scene (pick which below, or let Auto-tune choose).'],
+	['haze', 'Distance haze', 0, 1.5, 0.05, 'Light', 'The far side of the diorama (the top of the screen) fades into soft, light air, as in Octopath Traveler.'],
 	['exposure', 'Exposure', -1, 1, 0.02, 'Color', 'Brighter or darker overall.'],
 	['contrast', 'Contrast', 0.6, 1.6, 0.02, 'Color', ''],
 	['saturation', 'Saturation', 0, 2, 0.02, 'Color', ''],
@@ -36,6 +37,8 @@ export const DEFAULTS = {
 	threshold: 0.62,
 	rays: 0.45,
 	motes: 0.6,
+	haze: 0.35,
+	particles: 'auto',
 	exposure: 0,
 	contrast: 1.06,
 	saturation: 1.15,
@@ -49,10 +52,10 @@ export const DEFAULTS = {
 
 export const PRESETS = {
 	classic: { label: 'Classic HD-2D', values: {} },
-	dreamy: { label: 'Soft and dreamy', values: { tiltShift: 1.05, focusWidth: 0.3, bloom: 1.1, threshold: 0.5, rays: 0.7, motes: 0.9, contrast: 0.98, saturation: 1.05, warmth: 0.35, splitTone: 0.8, vignette: 0.55, grain: 0.15, aberration: 0.35 } },
-	crisp: { label: 'Crisp and clean', values: { tiltShift: 0.35, focusWidth: 0.55, bloom: 0.45, threshold: 0.72, rays: 0.2, motes: 0.3, contrast: 1.1, saturation: 1.2, warmth: 0.1, splitTone: 0.35, vignette: 0.3, grain: 0.08, aberration: 0.1 } },
-	dramatic: { label: 'Dramatic', values: { tiltShift: 0.85, focusWidth: 0.35, bloom: 0.95, threshold: 0.55, rays: 0.6, motes: 0.5, exposure: -0.12, contrast: 1.22, saturation: 1.05, warmth: 0, splitTone: 1.1, vignette: 0.75, grain: 0.3, aberration: 0.3 } },
-	subtle: { label: 'Subtle', values: { tiltShift: 0.3, focusWidth: 0.6, bloom: 0.35, rays: 0.15, motes: 0.25, contrast: 1.02, saturation: 1.06, warmth: 0.1, splitTone: 0.3, vignette: 0.25, grain: 0.08, aberration: 0.05, shadows: 0.6 } },
+	dreamy: { label: 'Soft and dreamy', values: { haze: 0.65, tiltShift: 1.05, focusWidth: 0.3, bloom: 1.1, threshold: 0.5, rays: 0.7, motes: 0.9, contrast: 0.98, saturation: 1.05, warmth: 0.35, splitTone: 0.8, vignette: 0.55, grain: 0.15, aberration: 0.35 } },
+	crisp: { label: 'Crisp and clean', values: { haze: 0.15, tiltShift: 0.35, focusWidth: 0.55, bloom: 0.45, threshold: 0.72, rays: 0.2, motes: 0.3, contrast: 1.1, saturation: 1.2, warmth: 0.1, splitTone: 0.35, vignette: 0.3, grain: 0.08, aberration: 0.1 } },
+	dramatic: { label: 'Dramatic', values: { haze: 0.3, tiltShift: 0.85, focusWidth: 0.35, bloom: 0.95, threshold: 0.55, rays: 0.6, motes: 0.5, exposure: -0.12, contrast: 1.22, saturation: 1.05, warmth: 0, splitTone: 1.1, vignette: 0.75, grain: 0.3, aberration: 0.3 } },
+	subtle: { label: 'Subtle', values: { haze: 0.15, tiltShift: 0.3, focusWidth: 0.6, bloom: 0.35, rays: 0.15, motes: 0.25, contrast: 1.02, saturation: 1.06, warmth: 0.1, splitTone: 0.3, vignette: 0.25, grain: 0.08, aberration: 0.05, shadows: 0.6 } },
 };
 
 /* ------------------------------------------------------------------ */
@@ -169,6 +172,9 @@ export async function analyzeScene(scene) {
 			highTint: night > 0.55 ? H(42, 0.45, 0.72) : warm < -0.35 ? H(30, 0.35, 0.76) : H(38, 0.55, 0.75),
 			rayColor: night > 0.55 ? H(210, 0.6, 0.75) : H(Math.min(60, Math.max(25, hue)), 0.7, 0.78),
 			moteKind: night > 0.55 ? 'fireflies' : warm > 0.4 && sat > 0.35 ? 'embers' : 'dust',
+			// the air in the distance: pale sky by day, deep blue at night, a little of the map's own hue
+			haze: night > 0.55 ? 0.8 : lum > 0.6 ? 0.85 : 1,
+			hazeColor: night > 0.55 ? H(222, 0.35, 0.32) : H(warm > 0.3 ? 38 : 205, 0.28, 0.82),
 		},
 	};
 }
@@ -192,8 +198,10 @@ export function resolveLook(cfg, analysis) {
 		bloom: cfg.bloom * (t?.bloom ?? 1),
 		threshold: clamp(cfg.threshold + (t?.threshold ?? 0), 0.15, 0.98),
 		rays: cfg.rays * (t?.rays ?? 1),
-		motes: cfg.motes * (t?.motes ?? 1),
-		moteKind: t?.moteKind ?? 'dust',
+		motes: cfg.particles === 'none' ? 0 : cfg.motes * (t?.motes ?? 1),
+		moteKind: cfg.particles && !['auto', 'none'].includes(cfg.particles) ? cfg.particles : (t?.moteKind ?? 'dust'),
+		haze: (cfg.haze ?? 0) * (t?.haze ?? 1),
+		hazeColor: t?.hazeColor ?? [0.78, 0.85, 0.92],
 		exposure: cfg.exposure + (t?.exposure ?? 0),
 		contrast: cfg.contrast,
 		saturation: cfg.saturation * (t?.saturation ?? 1),
