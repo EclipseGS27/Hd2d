@@ -13,7 +13,7 @@ In Foundry: Add-on Modules → Install Module → paste this Manifest URL:
 ## What it does
 - **Tilt-shift depth of field**: the top and bottom of the screen go soft, like looking at a miniature. The sharp band **follows your token** (or whoever is acting, or stays in the middle).
 - **Bloom**: torches, lights, fire and magic glow, from a real bright pass blurred at half size.
-- **Light shafts** drifting from the key light, and **floating motes** in the light: dust by day, embers in warm, fiery scenes, fireflies at night.
+- **Light shafts** drifting from the key light, and **floating motes** in the light: dust by day, embers in warm, fiery scenes, fireflies at night. Both are fixed to the map, so they stay put when you pan or zoom.
 - **Color grading**: exposure, contrast, saturation, warmth, and split toning (cool shadows, warm highlights), then vignette, film grain and a little lens fringe toward the corners.
 - **Sprites**: soft contact shadows under every token so they stand on the map, and **crisp pixel art** (nearest-neighbor scaling) for small sprites or every token.
 - **Auto-tune**: reads the scene's background (brightness, colorfulness, dominant hue) and its darkness, and leans the look to match: dark maps get a lift, nights go blue with stronger bloom and fireflies, cool scenes get a cooler grade. The panel shows what it read ("daylight, neutral", the three tint colors and the mote kind); ⟳ reads it again. It re-reads when the scene's background or darkness changes.
