@@ -9,6 +9,7 @@ precision highp float;
 varying vec2 vTextureCoord;
 uniform sampler2D uSampler;
 uniform sampler2D uBloomTex;
+uniform vec4 uBloomMap;
 uniform vec4 inputSize;
 uniform vec4 outputFrame;
 uniform vec4 filterClamp;
@@ -76,7 +77,9 @@ void main() {
 	}
 
 	// bloom: the bright parts, blurred wide in their own passes
-	col += texture2D(uBloomTex, vTextureCoord).rgb * uBloom * 1.4;
+	// (its texture is a different size from the screen's, so map the coordinates across and stay inside what was drawn)
+	vec2 buv = min(vTextureCoord * uBloomMap.xy, uBloomMap.zw);
+	col += texture2D(uBloomTex, buv).rgb * uBloom * 1.4;
 
 	// exposure and white balance
 	col *= exp2(uExposure);
@@ -134,11 +137,39 @@ void main() {
 }
 `;
 
+/**
+ * One direction of a 9-tap gaussian for the bloom. PIXI's own blur reads its source with the screen texture's
+ * coordinates, which is wrong for a half-size pooled texture (it is padded to a different size): this one maps
+ * the coordinates onto its source itself (uMap) and never samples past what was drawn (uMax).
+ */
+const BLUR = `
+precision highp float;
+varying vec2 vTextureCoord;
+uniform sampler2D uSampler;
+uniform vec2 uMap;
+uniform vec2 uMax;
+uniform vec2 uDir;
+vec3 at(vec2 uv) { return texture2D(uSampler, clamp(uv, vec2(0.0), uMax)).rgb; }
+void main() {
+	vec2 uv = vTextureCoord * uMap;
+	vec3 c = at(uv) * 0.2270;
+	c += (at(uv + uDir) + at(uv - uDir)) * 0.1946;
+	c += (at(uv + uDir * 2.0) + at(uv - uDir * 2.0)) * 0.1216;
+	c += (at(uv + uDir * 3.0) + at(uv - uDir * 3.0)) * 0.0540;
+	c += (at(uv + uDir * 4.0) + at(uv - uDir * 4.0)) * 0.0162;
+	gl_FragColor = vec4(c, 1.0);
+}
+`;
+
+/** Tap spacing of each blur round, in screen pixels: wider rounds stack into one soft, wide glow */
+const ROUNDS = { low: [5], high: [3, 7], ultra: [2, 5, 10] };
+
 export class HD2DFilter extends PIXI.Filter {
 	constructor(quality = 'high') {
 		super(undefined, FRAG(quality === 'low' ? 8 : quality === 'ultra' ? 24 : 14), {
 			uScreen: new Float32Array([1, 1]),
 			uBloomTex: PIXI.Texture.EMPTY,
+			uBloomMap: new Float32Array([1, 1, 1, 1]),
 			uTime: 0,
 			uTilt: 0.6,
 			uFocusY: 0.55,
@@ -164,18 +195,41 @@ export class HD2DFilter extends PIXI.Filter {
 		});
 		this.quality = quality;
 		this.bright = new PIXI.Filter(undefined, BRIGHT, { uThresh: 0.62 });
-		this.blur = new PIXI.BlurFilter(quality === 'low' ? 10 : 16, quality === 'low' ? 2 : quality === 'ultra' ? 5 : 3);
+		this.blur = new PIXI.Filter(undefined, BLUR, { uMap: new Float32Array([1, 1]), uMax: new Float32Array([1, 1]), uDir: new Float32Array([0, 0]) });
+		this.rounds = ROUNDS[quality] ?? ROUNDS.high;
 	}
 
-	/** Three passes: bright parts, blurred at half size, then everything else in one go */
+	/** Bright parts into a half-size texture, a few blur rounds there, then everything else in one pass */
 	apply(filterManager, input, output, clearMode) {
 		const res = this.resolution * 0.5;
 		const a = filterManager.getFilterTexture(input, res);
 		const b = filterManager.getFilterTexture(input, res);
 		this.bright.uniforms.uThresh = this.uniforms.uThresh;
 		this.bright.apply(filterManager, input, a, PIXI.CLEAR_MODES.CLEAR);
-		this.blur.apply(filterManager, a, b, PIXI.CLEAR_MODES.CLEAR);
-		this.uniforms.uBloomTex = b;
+		// Every pass is drawn with the screen texture's coordinates; the pool pads the half-size textures to
+		// other sizes, so scale those coordinates onto them and stay inside the part that was drawn
+		const f = input.filterFrame ?? { width: input.width, height: input.height };
+		const sx = input.width / a.width, sy = input.height / a.height;
+		const mx = (f.width - 1 / res) / a.width, my = (f.height - 1 / res) / a.height;
+		const u = this.blur.uniforms;
+		u.uMap[0] = sx;
+		u.uMap[1] = sy;
+		u.uMax[0] = mx;
+		u.uMax[1] = my;
+		for (const step of this.rounds) {
+			u.uDir[0] = step / a.width;
+			u.uDir[1] = 0;
+			this.blur.apply(filterManager, a, b, PIXI.CLEAR_MODES.CLEAR);
+			u.uDir[0] = 0;
+			u.uDir[1] = step / a.height;
+			this.blur.apply(filterManager, b, a, PIXI.CLEAR_MODES.CLEAR);
+		}
+		this.uniforms.uBloomTex = a;
+		const m = this.uniforms.uBloomMap;
+		m[0] = sx;
+		m[1] = sy;
+		m[2] = mx;
+		m[3] = my;
 		filterManager.applyFilter(this, input, output, clearMode);
 		filterManager.returnFilterTexture(a);
 		filterManager.returnFilterTexture(b);
