@@ -1,0 +1,55 @@
+/* HD-2D look: the settings panel */
+.application.hd2d-app {
+	--ink: #eef3ff; --ink2: rgba(238, 243, 255, 0.75); --ink3: rgba(238, 243, 255, 0.5);
+	--line: rgba(159, 208, 255, 0.28); --line2: rgba(159, 208, 255, 0.14); --gold: #f2c45a;
+	color: var(--ink); background: #0b1220; border: 1px solid var(--line); color-scheme: dark;
+}
+.application.hd2d-app .window-header { background: rgba(12, 20, 44, 0.98); color: var(--ink); border-bottom: 1px solid var(--line2); }
+.application.hd2d-app .window-content { padding: 0; overflow: hidden; background: radial-gradient(500px 300px at 15% -10%, rgba(242, 196, 90, 0.14), transparent 70%), radial-gradient(500px 360px at 110% 30%, rgba(90, 169, 255, 0.14), transparent 70%), #0b1220; color: var(--ink); }
+:where(.application.hd2d-app button) { all: unset; box-sizing: border-box; cursor: pointer; font: inherit; color: inherit; }
+.application.hd2d-app :is(button, select, input):focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.application.hd2d-app select { width: 100%; height: 30px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); color: var(--ink); }
+.application.hd2d-app select option { background: #121b33; }
+
+.hd2d { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; padding: 14px 16px; font-size: 14px; }
+.hd2d .top { display: flex; align-items: center; justify-content: space-between; }
+.hd2d .switch { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.hd2d .switch b { font-size: 18px; letter-spacing: 0.04em; }
+.hd2d .switch.sm { font-size: 13px; color: var(--ink2); }
+.hd2d .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.hd2d .switch span { position: relative; width: 40px; height: 22px; border-radius: 11px; background: rgba(255, 255, 255, 0.12); border: 1px solid var(--line); transition: background 0.15s; flex: none; }
+.hd2d .switch span::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #c8d3e8; transition: transform 0.15s; }
+.hd2d .switch input:checked + span { background: rgba(242, 196, 90, 0.45); border-color: var(--gold); }
+.hd2d .switch input:checked + span::after { transform: translateX(18px); background: #fff3d1; }
+.hd2d .switch.sm span { width: 34px; height: 18px; }
+.hd2d .switch.sm span::after { width: 12px; height: 12px; }
+.hd2d .switch.sm input:checked + span::after { transform: translateX(16px); }
+.hd2d .switch input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.hd2d .readout { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; background: rgba(12, 20, 44, 0.7); border: 1px solid var(--line2); }
+.hd2d .readout small { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink3); }
+.hd2d .readout .val { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.hd2d .readout .val b { text-transform: capitalize; }
+.hd2d .readout .sw { display: flex; gap: 3px; }
+.hd2d .readout .sw i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.3); }
+.hd2d .readout button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 4px; border: 1px solid var(--line); }
+.hd2d .readout button:hover { color: var(--gold); border-color: var(--gold); }
+.hd2d .dim { color: var(--ink3); font-size: 12px; text-transform: capitalize; }
+.hd2d .note { margin: 0; font-size: 12px; color: #ffe6ad; }
+
+.hd2d .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hd2d .fld { display: flex; flex-direction: column; gap: 3px; }
+.hd2d .fld > span, .hd2d legend { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink2); }
+
+.hd2d .sliders { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+.hd2d fieldset { margin: 0; padding: 4px 10px 8px; border: 1px solid var(--line2); border-radius: 6px; display: flex; flex-direction: column; gap: 2px; }
+.hd2d legend { color: var(--gold); padding: 0 4px; font-weight: 700; }
+.hd2d .sl { display: grid; grid-template-columns: 120px minmax(0, 1fr) 38px; align-items: center; gap: 8px; }
+.hd2d .sl > span { font-size: 13px; color: var(--ink2); }
+.hd2d .sl input { width: 100%; accent-color: var(--gold); }
+.hd2d .sl output { font-size: 12px; color: var(--ink3); text-align: right; font-variant-numeric: tabular-nums; }
+
+.hd2d footer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line2); }
+.hd2d footer .sp { flex: 1; }
+.hd2d footer button { padding: 5px 12px; border-radius: 4px; border: 1px solid rgba(159, 208, 255, 0.45); background: rgba(90, 169, 255, 0.12); font-weight: 700; font-size: 12px; }
+.hd2d footer button:hover { filter: brightness(1.3); }
