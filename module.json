@@ -2,13 +2,13 @@
   "id": "fu-hd2d",
   "title": "HD-2D Look",
   "description": "Gives any scene the HD-2D look of modern pixel-art JRPGs: tilt-shift depth of field that follows your token, bloom on lights and magic, light shafts, cinematic color grading, vignette, grain and lens fringe, soft shadows under every sprite, crisp pixel art and motes drifting in the light. It reads each scene's colors and darkness and tunes itself to them. One toggle (Shift+H) and a slider for everything; the GM can save a look per scene.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "authors": [{ "name": "George Sowidan" }],
   "compatibility": { "minimum": "13", "verified": "13" },
   "esmodules": ["scripts/main.mjs"],
   "styles": ["styles/hd2d.css"],
   "url": "https://github.com/EclipseGS27/Hd2d",
   "manifest": "https://github.com/EclipseGS27/Hd2d/releases/latest/download/module.json",
-  "download": "https://github.com/EclipseGS27/Hd2d/releases/download/v1.0.1/fu-hd2d.zip",
+  "download": "https://github.com/EclipseGS27/Hd2d/releases/download/v1.0.2/fu-hd2d.zip",
   "bugs": "https://github.com/EclipseGS27/Hd2d/issues"
 }
