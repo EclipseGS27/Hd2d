@@ -1,6 +1,6 @@
 /**
  * The HD-2D look as one screen-space filter: tilt-shift depth of field around a focus band, bloom, light
- * shafts (pinned to the map), color grading (exposure, white balance, split toning, contrast, saturation),
+ * shafts (pinned to the map), distance haze, color grading (exposure, white balance, split toning, contrast, saturation),
  * chromatic aberration, vignette and film grain. One pass, so it stays cheap enough for every table.
  */
 
@@ -30,6 +30,8 @@ uniform vec3 uShadowTint;
 uniform vec3 uHighTint;
 uniform float uRays;
 uniform vec3 uRayColor;
+uniform float uHaze;
+uniform vec3 uHazeColor;
 uniform vec2 uRayOrigin;
 uniform vec3 uView;
 uniform float uRaySpan;
@@ -101,6 +103,16 @@ void main() {
 		vec2 e = 0.02 * vec2(uScene.w / uScene.z, 1.0);
 		float inside = smoothstep(0.0, e.x, q.x) * smoothstep(0.0, e.x, 1.0 - q.x) * smoothstep(0.0, e.y, q.y) * smoothstep(0.0, e.y, 1.0 - q.y);
 		col += uRayColor * s * fall * uRays * 0.55 * inside;
+	}
+
+	// distance haze: above the focus band the diorama recedes into soft, light air
+	if (uHaze > 0.001) {
+		float top = max(0.05, uFocusY - uFocusW * 0.5);
+		float far = clamp((top - screen.y) / top, 0.0, 1.0);
+		far = far * far * (3.0 - 2.0 * far);
+		float hz = clamp(uHaze * 0.5 * far, 0.0, 0.8);
+		vec3 airy = mix(vec3(luma(col)), col, 0.55) * 0.55 + uHazeColor * 0.55;
+		col = mix(col, airy, hz);
 	}
 
 	// split toning: shadows lean one way, highlights the other
@@ -185,6 +197,8 @@ export class HD2DFilter extends PIXI.Filter {
 			uHighTint: new Float32Array([1, 0.9, 0.75]),
 			uRays: 0.3,
 			uRayColor: new Float32Array([1, 0.9, 0.7]),
+			uHaze: 0.35,
+			uHazeColor: new Float32Array([0.78, 0.85, 0.92]),
 			uRayOrigin: new Float32Array([0, 0]),
 			uView: new Float32Array([0, 0, 1]),
 			uRaySpan: 1000,
@@ -257,6 +271,8 @@ export class HD2DFilter extends PIXI.Filter {
 		u.uHighTint.set(p.highTint);
 		u.uRays = p.rays;
 		u.uRayColor.set(p.rayColor);
+		u.uHaze = p.haze ?? 0;
+		u.uHazeColor.set(p.hazeColor ?? [0.78, 0.85, 0.92]);
 		u.uVignette = p.vignette;
 		u.uGrain = p.grain;
 		u.uAberr = p.aberration;

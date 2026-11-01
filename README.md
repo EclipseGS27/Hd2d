@@ -13,11 +13,12 @@ In Foundry: Add-on Modules → Install Module → paste this Manifest URL:
 ## What it does
 - **Tilt-shift depth of field**: the top and bottom of the screen go soft, like looking at a miniature. The sharp band **follows your token** (or whoever is acting, or stays in the middle).
 - **Bloom**: torches, lights, fire and magic glow, from a real bright pass blurred at half size.
-- **Light shafts** drifting from the key light, and **floating motes** in the light: dust by day, embers in warm, fiery scenes, fireflies at night. Both are fixed to the map, so they stay put when you pan or zoom.
+- **Light shafts** drifting from the key light, and **particles**: dust by day, embers in warm, fiery scenes, fireflies at night (Auto), or pick falling leaves, petals, snow or ash. Both are fixed to the map, so they stay put when you pan or zoom.
+- **Distance haze**: above the focus band the diorama recedes into soft, light air (pale sky by day, deep blue at night), like the distant parts of an Octopath Traveler or Triangle Strategy map.
 - **Color grading**: exposure, contrast, saturation, warmth, and split toning (cool shadows, warm highlights), then vignette, film grain and a little lens fringe toward the corners.
 - **Sprites**: soft contact shadows under every token so they stand on the map, and **crisp pixel art** (nearest-neighbor scaling) for small sprites or every token.
 - **Auto-tune**: reads the scene's background (brightness, colorfulness, dominant hue) and its darkness, and leans the look to match: dark maps get a lift, nights go blue with stronger bloom and fireflies, cool scenes get a cooler grade. The panel shows what it read ("daylight, neutral", the three tint colors and the mote kind); ⟳ reads it again. It re-reads when the scene's background or darkness changes.
-- **Presets**: Classic HD-2D, Soft and dreamy, Crisp and clean, Dramatic, Subtle. Then a slider for every part: depth of field, focus band, bloom and threshold, light shafts, motes, exposure, contrast, saturation, warmth, split toning, vignette, grain, lens fringe, sprite shadows.
-- **GM**: save the current sliders as a scene's own look (everyone sees it there, unless a player turns off "Use the GM's scene looks"), clear it, or turn the look off for a scene.
+- **Presets**: Classic HD-2D, Soft and dreamy, Crisp and clean, Dramatic, Subtle. Then a slider for every part: depth of field, focus band, bloom and threshold, light shafts, particles, distance haze, exposure, contrast, saturation, warmth, split toning, vignette, grain, lens fringe, sprite shadows.
+- **GM**: save the current sliders as a scene's own look (everyone sees it there, unless a player turns off "Use the GM's scene looks"), clear it, or turn the look off for a scene. Once a scene has its own look, the panel edits it directly and saves as you go; "My own look" switches to your personal sliders. What the canvas shows while the panel is open is always what you are editing.
 
 The look is applied to the scene only: the UI, token bars, rulers and chat stay sharp. The API is at `game.modules.get('fu-hd2d').api` (`toggle()`, `open()`, `engine`).
